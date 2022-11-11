@@ -25,7 +25,9 @@ def start(message):
 def check_callback_data(callback):
     if callback.data == 'Ammount':
         print(callback)
-        print(callback.json.from.id)
+        print(callback.from_user.id)
+        print(callback.json)
+        bot.send_message(callback.from_user.id,'Введите номер телефона',parse_mode='html')
 
 
 
