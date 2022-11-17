@@ -1,35 +1,70 @@
 import telebot
 from telebot import types
 
+from balance import Balance
+from config import tokenbot
+
+
 # pip3 uninstall telebot
 # pip3 uninstall PyTelegramBotAPI
 # pip3 install pyTelegramBotAPI
 # pip3 install --upgrade pyTelegramBotAPI
+import mysql
+from mysql import Mysql
 
-bot = telebot.TeleBot('5494582047:AAF6MZ07pdVjW5ApeYnQxFc7_-_gAxeZzR0')
+
+pressbalance = 0
+
+bot = telebot.TeleBot(tokenbot)
 
 @bot.message_handler(commands=['start'])
 def start(message):
+    global pressbalance
+    pressbalance = 0
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    ammount_button = types.KeyboardButton('/баланс')
+    start_button = types.KeyboardButton('/start')
 
-    markup = types.InlineKeyboardMarkup()
-    ammount_button = types.InlineKeyboardButton('Баланс',callback_data='Ammount')
+    markup.add(ammount_button,start_button)
 
-    reply_ammount = markup.add(ammount_button)
+    mess = f'Привет, {message.from_user.first_name} {message.from_user.last_name} '
 
-    mess = f'Привет, <b>{message.from_user.first_name} <u> {message.from_user.last_name} </u></b>'
 
-    bot.send_message(message.chat.id, mess, parse_mode='html')
-    bot.send_message(message.chat.id, 'Баланс', reply_markup=markup)
+
+    bot.send_message(message.chat.id, mess, reply_markup=markup)
+
+
+@bot.message_handler(commands=['баланс'])
+def ammoiunt(message):
+    global pressbalance
+    pressbalance = 1
+    bot.send_message(message.chat.id, 'Введите номер телефона', parse_mode='html')
+
+
+
+
 
 @bot.callback_query_handler(func= lambda callback: callback.data)
-def check_callback_data(callback):
+def check_callback_data(callback, mysql=None):
     if callback.data == 'Ammount':
+        chekmysql = Mysql
+
+        Mysql.create_connectio_mysql_db(chekmysql)
+        Mysql.create_cursor_mysql_db(chekmysql)
+        print(chekmysql.connection_db)
+        print(chekmysql.cursor)
+
         print(callback)
         print(callback.from_user.id)
         print(callback.json)
+        Mysql.close(chekmysql)
         bot.send_message(callback.from_user.id,'Введите номер телефона',parse_mode='html')
 
 
+# @bot.message_handler(content_types=['text'])
+# def mess(message):
+#     final_message = ''
+#     get_message_bot  = message.text.strip().lower()
 
 
 
@@ -37,32 +72,47 @@ def check_callback_data(callback):
 
 @bot.message_handler()
 def get_user_text(message):
-    print(message.from_user.last_name +' '+message.from_user.first_name + " " + message.text)
-    if message.text.lower() == 'привет' \
-            or message.text == '👋'\
-            or message.text == '🙋' \
-            or message.text == '🖐' \
-            or message.text == '✋' \
-            or message.text == '🙋‍♀️' \
-            or message.text == '🤚':
-        mess = f'Привет, <b>{message.from_user.first_name} <u> {message.from_user.last_name} </u></b>'
-        bot.send_message(message.chat.id, mess, parse_mode='html')
-    elif message.text.lower() == 'ид':
-        mess = f'Ваш ИД: <b>{message.from_user.id}></b>'
-        bot.send_message(message.chat.id, mess, parse_mode='html')
-    elif message.text.lower() == 'ква':
-        mess = f'Ква-ква-ква!🐸🫒'
-        bot.send_message(message.chat.id, mess, parse_mode='html')
-    elif message.text.lower() == '🥨':
-        mess = f'Приятного аппетита!🥨'
-        bot.send_message(message.chat.id, mess, parse_mode='html')
-    elif message.text.lower() == 'фото':
-        photo = open('hleb.jpg','rb')
-        bot.send_photo(message.chat.id,photo)
+    print(pressbalance)
+    if pressbalance == 1:
+        mess = message.text
+        balanc = Balance()
+        client = balanc.findclient(mess)
+        print(client)
+        print(balanc.get_balance(client))
+        mess = 'Ваш баланс составляет ' + str(balanc.get_balance(client)) + ' бонусных баллов!'
+        bot.send_message(message.chat.id,mess,parse_mode='html')
+        print(message.from_user.last_name +' '+message.from_user.first_name + " " + message.text)
     else:
-        mess = f'я тебя не понимаю!'
-        bot.send_message(message.chat.id, mess, parse_mode='html')
-    bot.send_message(message.chat.id,message,parse_mode='html')
+        print('text')
+        if message.text.lower() == 'привет' \
+                or message.text == '👋'\
+                or message.text == '🙋' \
+                or message.text == '🖐' \
+                or message.text == '✋' \
+                or message.text == '🙋‍♀️' \
+                or message.text == '🤚':
+            mess = f'Привет, <b>{message.from_user.first_name} <u> {message.from_user.last_name} </u></b>'
+            bot.send_message(message.chat.id, mess, parse_mode='html')
+        elif message.text.lower() == 'ид':
+            mess = f'Ваш ИД: <b>{message.from_user.id}></b>'
+            bot.send_message(message.chat.id, mess, parse_mode='html')
+        elif message.text.lower() == 'ква':
+            mess = f'Ква-ква-ква!🐸🫒'
+            bot.send_message(message.chat.id, mess, parse_mode='html')
+        elif message.text.lower() == '🥨':
+            mess = f'Приятного аппетита!🥨'
+            bot.send_message(message.chat.id, mess, parse_mode='html')
+        elif message.text.lower() == 'фото':
+            photo = open('hleb.jpg','rb')
+            bot.send_photo(message.chat.id,photo)
+    # elif message.text.lower() == 'баланс':
+    #     mess = f'Введите номер телефона'
+    #     bot.send_message(message.chat.id, mess, parse_mode='html')
+        else:
+            mess = f'я тебя не понимаю!'
+            bot.send_message(message.chat.id, mess, parse_mode='html')
+    # bot.send_message(message.chat.id, message, parse_mode='html')
+    print(message)
 
 
 bot.polling(none_stop=True)
