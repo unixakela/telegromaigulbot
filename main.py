@@ -16,14 +16,15 @@ from mysql import Mysql
 
 
 pressbalance = 0
+presstrainbot=0
 
 bot = telebot.TeleBot(tokenbot)
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    global pressbalance
+    global pressbalance ,presstrainbot
     pressbalance = 0
-
+    presstrainbot=0
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     ammount_button = types.KeyboardButton('/баланс')
     start_button = types.KeyboardButton('/start')
@@ -39,9 +40,17 @@ def start(message):
 
 @bot.message_handler(commands=['баланс','balance'])
 def ammoiunt(message):
-    global pressbalance
+    global pressbalance,presstrainbot
     pressbalance = 1
+    presstrainbot = 0
     bot.send_message(message.chat.id, 'Введите номер телефона', parse_mode='html')
+
+@bot.message_handler(commands=['trainbot'])
+def ammoiunt(message):
+    global pressbalance,presstrainbot
+    pressbalance = 0
+    presstrainbot = 1
+    bot.send_message(message.chat.id, 'Научите меня новым дилогам:) вопрос - ответ', parse_mode='html')
 
 
 
@@ -70,28 +79,77 @@ def check_callback_data(callback, mysql=None):
 #     get_message_bot  = message.text.strip().lower()
 
 
+def speakbalance(message):
+    global pressbalance
+    mess = message.text
+    balanc = Balance()
+    client = balanc.findclient(mess)
+    print(client)
+    print(balanc.get_balance(client))
+    if len(client) > 0:
+        mess = 'Ваш баланс составляет ' + str(balanc.get_balance(client)) + ' бонусных баллов!'
+        pressbalance = 0
+    else:
+        mess = "клиент с таким номером не зарегестрирован, проверьте правильность веденных данных"
+    bot.send_message(message.chat.id, mess, parse_mode='html')
+
+    print(message.from_user.last_name + ' ' + message.from_user.first_name + " " + message.text)
+
+
+def speaktrainbot(message):
+    try:
+        sqlite_conn = sqlite3.connect('answer.db')
+        answ_cursor = sqlite_conn.cursor()
+        # попытка создать таблицу с ответами
+        try:
+            qry = "CREATE table IF NOT EXISTS answer (question TEXT NOT NULL, answer TEXT NOT NULL, moderation INT, fio INT)"
+            answ_cursor.execute(qry)
+            print('Таблицу создали')
+        except Exception as ex:
+            print(Exception)
+        finally:
+            print('все ок или не ок')
+
+
+        print(message)
+
+        # try:
+        #     qry = "CREATE table IF NOT EXISTS answer (question TEXT NOT NULL, answer TEXT NOT NULL, moderation INT, fio INT)"
+        #     answ_cursor.execute(qry)
+        #     print('Таблицу создали')
+        # except Exception as ex:
+        #     print(Exception)
+        # finally:
+        #     print('все ок или не ок')
+        strh = message.text
+        str = message.text.lower()
+
+        print(str.find('-'))
+        qst = str[0:str.find('-')].strip()
+        qst.strip()
+        ans = strh[str.find('-')+1:]
+        ans.strip()
+        print(qst)
+        print(ans)
+        print('подключились к ДБ')
+    except Exception as ex:
+        print('Не получилось обучение')
+    finally:
+        if (sqlite_conn):
+            sqlite_conn.close()
+            print('Мы молодцы!!! Ты хороший учитель. Мы выучили что-то новое.')
 
 
 
 @bot.message_handler()
 def get_user_text(message):
-    global pressbalance
+    global pressbalance,presstrainbot
     print(pressbalance)
+    print(presstrainbot)
     if pressbalance == 1:
-        mess = message.text
-        balanc = Balance()
-        client = balanc.findclient(mess)
-        print(client)
-        print(balanc.get_balance(client))
-        if len(client) > 0:
-            mess = 'Ваш баланс составляет ' + str(balanc.get_balance(client)) + ' бонусных баллов!'
-
-            pressbalance = 0
-        else:
-            mess = "клиент с таким номером не зарегестрирован, проверьте правильность веденных данных"
-        bot.send_message(message.chat.id,mess,parse_mode='html')
-
-        print(message.from_user.last_name +' '+message.from_user.first_name + " " + message.text)
+         speakbalance(message)
+    elif presstrainbot == 1:
+        speaktrainbot(message)
 
     else:
         answerdb=0
