@@ -97,6 +97,7 @@ def speakbalance(message):
 
 
 def speaktrainbot(message):
+    global presstrainbot
     try:
         sqlite_conn = sqlite3.connect('answer.db')
         answ_cursor = sqlite_conn.cursor()
@@ -113,32 +114,124 @@ def speaktrainbot(message):
 
         print(message)
 
-        # try:
-        #     qry = "CREATE table IF NOT EXISTS answer (question TEXT NOT NULL, answer TEXT NOT NULL, moderation INT, fio INT)"
-        #     answ_cursor.execute(qry)
-        #     print('Таблицу создали')
-        # except Exception as ex:
-        #     print(Exception)
-        # finally:
-        #     print('все ок или не ок')
         strh = message.text
         str = message.text.lower()
 
-        print(str.find('-'))
-        qst = str[0:str.find('-')].strip()
-        qst.strip()
-        ans = strh[str.find('-')+1:]
-        ans.strip()
-        print(qst)
-        print(ans)
-        print('подключились к ДБ')
+        if (str.find('-')) >0:
+            print(str.find('-'))
+            qst = str[0:str.find('-')].strip()
+            qst = qst.strip()
+            ans = strh[str.find('-')+1:]
+            ans = ans.strip()
+            anslist = ans.split('.')
+            ans = ''
+            for val in anslist:
+                ans += val.capitalize() + '. '
+
+
+
+            print(qst)
+            print(ans)
+            try:
+                qry = "select * from answer WHERE answer.question = '" + qst +  "';"
+                answ_cursor.execute(qry)
+                anser_list = answ_cursor.fetchall()
+                print(len(anser_list))
+                if len(anser_list) == 0:
+                    qry = "insert into answer (question,answer,moderation,fio) " \
+                          "values ('"+qst+"','"+ans+"',0,0)"
+                    answ_cursor.execute(qry)
+                    print()
+                    sqlite_conn.commit()
+                    mess = 'Мы молодцы!!! Ты хороший учитель. Мы выучили что-то новое.';
+                    presstrainbot = 0
+                else:
+                    mess = 'Спасибо я уже знаю это';
+                    presstrainbot = 0
+                    print('add answer')
+            except Exception as ex:
+                print(ex)
+            finally:
+                print('add')
+
+
+            print('подключились к ДБ')
+
+        else:
+            mess = 'Возможно вы не правильно поняли схему обучения. Напишите через "-"  по схеме "что вижу - что отвечаю"   '
+
+        bot.send_message(message.chat.id, mess, parse_mode='html')
+
     except Exception as ex:
         print('Не получилось обучение')
+        mess = 'Не получилось обучение';
+        bot.send_message(message.chat.id, mess, parse_mode='html')
     finally:
         if (sqlite_conn):
             sqlite_conn.close()
             print('Мы молодцы!!! Ты хороший учитель. Мы выучили что-то новое.')
 
+
+def speakbot(message):
+    answerdb = 0
+    print('text')
+    try:
+        sqlite_conn = sqlite3.connect('answer.db')
+        mess_cursor = sqlite_conn.cursor()
+        print('подключились к ДБ')
+        messqst = message.text
+        messqst = messqst.lower()
+        messqst = messqst.strip()
+        qry = "select * from answer WHERE answer.question = '" + messqst + "';"
+        mess_cursor.execute(qry)
+        anser_list = mess_cursor.fetchall()
+        print(len(anser_list))
+        if len(anser_list) == 0:
+            print('я вас не понимаю. Попробуйте провести обчучение')
+            mess = 'Я вас не понимаю. Попробуйте провести обучение /trainbot'
+        else:
+            row = anser_list[0]
+            mess = row[1]
+            if int(row[3]) == 1:
+                mess = f'{mess}, <b>{message.from_user.first_name} <u> {message.from_user.last_name} </u></b>'
+
+        bot.send_message(message.chat.id, mess, parse_mode='html')
+    except Exception as ex:
+        print(ex)
+
+        if message.text.lower() == 'привет' \
+                or message.text == '👋' \
+                or message.text == 'hi' \
+                or message.text == 'hello' \
+                or message.text == '🙋' \
+                or message.text == '🖐' \
+                or message.text == '✋' \
+                or message.text == '🙋‍♀️' \
+                or message.text == '🤚':
+            mess = f'Привет, <b>{message.from_user.first_name} <u> {message.from_user.last_name} </u></b>'
+            bot.send_message(message.chat.id, mess, parse_mode='html')
+        elif message.text.lower() == 'ид':
+            mess = f'Ваш ИД: <b>{message.from_user.id}></b>'
+            bot.send_message(message.chat.id, mess, parse_mode='html')
+        elif message.text.lower() == 'ква':
+            mess = f'Ква-ква-ква!🐸🫒'
+            bot.send_message(message.chat.id, mess, parse_mode='html')
+        elif message.text.lower() == '🥨':
+            mess = f'Приятного аппетита!🥨'
+            bot.send_message(message.chat.id, mess, parse_mode='html')
+        elif message.text.lower() == 'фото':
+            photo = open('hleb.jpg', 'rb')
+            bot.send_photo(message.chat.id, photo)
+            # elif message.text.lower() == 'баланс':
+            #     mess = f'Введите номер телефона'
+            #     bot.send_message(message.chat.id, mess, parse_mode='html')
+        else:
+            mess = f'я тебя не понимаю!'
+            bot.send_message(message.chat.id, mess, parse_mode='html')
+            # bot.send_message(message.chat.id, message, parse_mode='html')
+    finally:
+        if (sqlite_conn):
+            sqlite_conn.close()
 
 
 @bot.message_handler()
@@ -150,50 +243,9 @@ def get_user_text(message):
          speakbalance(message)
     elif presstrainbot == 1:
         speaktrainbot(message)
-
     else:
-        answerdb=0
-        print('text')
-        try:
-            sqlite_conn = sqlite3.connect('answer.db')
-            answ_cursor = sqlite_conn.cursor()
-            print('подключились к ДБ')
-        except Exception as ex:
-            print(ex)
+        speakbot(message)
 
-            if message.text.lower() == 'привет' \
-                    or message.text == '👋' \
-                    or message.text == 'hi' \
-                    or message.text == 'hello' \
-                    or message.text == '🙋' \
-                    or message.text == '🖐' \
-                    or message.text == '✋' \
-                    or message.text == '🙋‍♀️' \
-                    or message.text == '🤚':
-                mess = f'Привет, <b>{message.from_user.first_name} <u> {message.from_user.last_name} </u></b>'
-                bot.send_message(message.chat.id, mess, parse_mode='html')
-            elif message.text.lower() == 'ид':
-                mess = f'Ваш ИД: <b>{message.from_user.id}></b>'
-                bot.send_message(message.chat.id, mess, parse_mode='html')
-            elif message.text.lower() == 'ква':
-                mess = f'Ква-ква-ква!🐸🫒'
-                bot.send_message(message.chat.id, mess, parse_mode='html')
-            elif message.text.lower() == '🥨':
-                mess = f'Приятного аппетита!🥨'
-                bot.send_message(message.chat.id, mess, parse_mode='html')
-            elif message.text.lower() == 'фото':
-                photo = open('hleb.jpg','rb')
-                bot.send_photo(message.chat.id,photo)
-                # elif message.text.lower() == 'баланс':
-                #     mess = f'Введите номер телефона'
-                #     bot.send_message(message.chat.id, mess, parse_mode='html')
-            else:
-                mess = f'я тебя не понимаю!'
-                bot.send_message(message.chat.id, mess, parse_mode='html')
-                # bot.send_message(message.chat.id, message, parse_mode='html')
-        finally:
-            if (sqlite_conn):
-                sqlite_conn.close()
     print(message)
 
 
